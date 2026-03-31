@@ -11,4 +11,4 @@ class User(Base):
     name = Column(String)
     email = Column(String, unique=True)
     
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)   
