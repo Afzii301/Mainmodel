@@ -30,5 +30,17 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
+@app.patch("/users/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_user.name = user.name
+    db_user.email = user.email
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
 
  
