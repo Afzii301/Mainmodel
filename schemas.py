@@ -1,16 +1,25 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 
-# User create karne ke liye
-class UserCreate(BaseModel):
-    name: str
-    email: str
+# Base schema for shared fields
+class UserBase(BaseModel):
+    # min_length=1 ensures the name is NOT an empty string ""
+    name: str = Field(..., min_length=1)
+    email: EmailStr 
 
+# Used for creating a user (POST)
+class UserCreate(UserBase):
+    pass
 
-# Response ke liye schema
-class UserResponse(BaseModel):
+# Used for updating a user (PATCH)
+class UserUpdate(BaseModel):
+    # Here, min_length=1 ensures that IF they provide a name, it isn't empty
+    name: Optional[str] = Field(None, min_length=1)
+    email: Optional[EmailStr] = None
+
+# Used for returning user data (Response)
+class UserResponse(UserBase):
     id: int
-    name: str
-    email: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
