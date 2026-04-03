@@ -42,11 +42,11 @@ def get_users(db: Session = Depends(get_db)):
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
     # Check duplicate email
-    existing_user = db.query(User).filter(User.email == user.email).first()
+    existing_user = db.query(User).filter(User.email == user.email, User.is_deleted == False).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    db_user = User(name=user.name, email=user.email)
+    db_user = User(name=user.name, email=user.email, password=user.password)
     db.add(db_user)
 
     try:
@@ -64,7 +64,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 @app.patch("/users/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
 
-    db_user = db.query(User).filter(User.id == user_id).first()
+    db_user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -74,12 +74,16 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
 
     # Update email (if provided)
     if user.email is not None:
-        email_exists = db.query(User).filter(User.email == user.email).first()
+        email_exists = db.query(User).filter(User.email == user.email, User.is_deleted == False).first()
 
         if email_exists and email_exists.id != user_id:
             raise HTTPException(status_code=400, detail="Email already in use")
 
         db_user.email = user.email
+
+    # Update password (if provided)
+    if user.password is not None:
+        db_user.password = user.password
 
     try:
         db.commit()
@@ -95,7 +99,7 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
 
-    db_user = db.query(User).filter(User.id == user_id).first()
+    db_user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -110,10 +114,8 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
 # -------------------- GET SINGLE USER --------------------
 @app.get("/users/{user_id}", response_model=UserResponse)
 def get_single_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.id == user_id).first()
+    db_user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-
     return db_user
-
