@@ -18,7 +18,13 @@ class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=8)  # Password must be at least 8 characters long
-
+    
+    
+class ResetPassword(BaseModel):
+    new_password: str = Field(..., min_length=8)  # New password must be at least 8 characters long
+    
+    
+    
 # Used for returning user data (Response)
 class UserResponse(UserBase):
     id: int
@@ -26,5 +32,6 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
         
+ 
         
         
