@@ -18,3 +18,4 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class
 Base = declarative_base()
+Base.metadata.create_all(bind=engine)

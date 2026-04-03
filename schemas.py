@@ -9,7 +9,7 @@ class UserBase(BaseModel):
 
 # Used for creating a user (POST)
 class UserCreate(UserBase):
-    pass
+    pass    
 
 # Used for updating a user (PATCH)
 class UserUpdate(BaseModel):
@@ -23,3 +23,6 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+        
+        
+        

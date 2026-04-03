@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
 from model import User
 from schemas import UserResponse, UserCreate, UserUpdate
@@ -22,7 +22,9 @@ def get_db():
 # -------------------- GET ALL USERS --------------------
 @app.get("/users", response_model=list[UserResponse])
 def get_users(db: Session = Depends(get_db)):
-    users = db.query(User).all()
+    users = db.query(User).filter(User.is_deleted == False).all()
+
+    # Filter out soft-deleted users
 
     # Optional safety: invalid data skip karega
     valid_users = []
@@ -97,11 +99,11 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
 
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-
-    db.delete(db_user)
+    # soft delete approach
+    db_user.is_deleted = True
     db.commit()
 
-    return {"detail": "User deleted successfully"}
+    return {"detail": "User  deleted successfully"}
 
 
 
