@@ -11,5 +11,6 @@ class User(Base):
     name = Column(String)
     email = Column(String, unique=True)
     is_deleted = Column(Boolean, default=False)
+
 # create table
 Base.metadata.create_all(bind=engine)

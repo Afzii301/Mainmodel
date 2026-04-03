@@ -103,7 +103,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     db_user.is_deleted = True
     db.commit()
 
-    return {"detail": "User soft deleted successfully"}
+    return {"detail": "User  deleted successfully"}
 
 
 
