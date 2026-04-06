@@ -5,6 +5,7 @@ from model import User
 from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
 from utils import hash_password, verify_password
 
+from schemas import LoginSchema
 app = FastAPI(
     title="User Management API",
     description="A simple User Management API with FastAPI and SQLAlchemy"
@@ -142,3 +143,34 @@ def reset_password(user_id: int, new_password: str = Query(..., min_length=8), d
         raise HTTPException(status_code=500, detail="Database error during password reset")
 
     return {"detail": "Password reset successfully"}
+
+
+
+
+
+@app.post("/login")
+def login(user: LoginSchema, db: Session = Depends(get_db)):
+
+    # Step 1: user find karo
+    db_user = db.query(User).filter(
+        User.email == user.email,
+        User.is_deleted == False
+    ).first()
+
+    # Step 2: agar user exist nahi karta
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Step 3: password verify karo
+    if not verify_password(user.password, db_user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Step 4: success
+    return {
+        "message": "Login successful",
+        "user_id": db_user.id,
+        "email": db_user.email
+    }
+    
+    
+    
