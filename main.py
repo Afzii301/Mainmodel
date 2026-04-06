@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
 from model import User
 from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
+from utils import hash_password, verify_password
 
 app = FastAPI(
     title="User Management API",
@@ -24,7 +25,7 @@ def get_db():
 def get_users(db: Session = Depends(get_db)):
     users = db.query(User).filter(User.is_deleted == False).all()
 
-    # Filter out soft-deleted users;a
+    # Filter out soft-deleted users
 
     # Optional safety: invalid data skip karega
     valid_users = []
@@ -46,7 +47,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    db_user = User(name=user.name, email=user.email, password=user.password)
+    db_user = User(name=user.name, email=user.email, password=hash_password(user.password))
+    
     db.add(db_user)
 
     try:
@@ -83,7 +85,7 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
 
     # Update password (if provided)
     if user.password is not None:
-        db_user.password = user.password
+        db_user.password = hash_password(user.password)
 
     try:
         db.commit()
@@ -131,7 +133,7 @@ def reset_password(user_id: int, new_password: str = Query(..., min_length=8), d
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db_user.password = new_password
+    db_user.password = hash_password(new_password)
     try:
         db.commit()
         db.refresh(db_user)
