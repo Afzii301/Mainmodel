@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
 from model import User
-from schemas import UserResponse, UserCreate, UserUpdate
+from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
 
 app = FastAPI(
     title="User Management API",
@@ -24,7 +24,7 @@ def get_db():
 def get_users(db: Session = Depends(get_db)):
     users = db.query(User).filter(User.is_deleted == False).all()
 
-    # Filter out soft-deleted users
+    # Filter out soft-deleted users;a
 
     # Optional safety: invalid data skip karega
     valid_users = []
@@ -119,3 +119,24 @@ def get_single_user(user_id: int, db: Session = Depends(get_db)):
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+
+
+
+
+@app.post("/users/{user_id}/reset-password")
+def reset_password(user_id: int, new_password: str = Query(..., min_length=8), db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db_user.password = new_password
+    try:
+        db.commit()
+        db.refresh(db_user)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error during password reset")
+
+    return {"detail": "Password reset successfully"}
