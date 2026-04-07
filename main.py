@@ -1,15 +1,16 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query,UploadFile,File
 from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
 from model import User
 from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
 from utils import hash_password, verify_password
-
+from fastapi.staticfiles import StaticFiles
 from schemas import LoginSchema
 app = FastAPI(
     title="User Management API",
     description="A simple User Management API with FastAPI and SQLAlchemy"
 )
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # -------------------- DB Dependency --------------------
@@ -171,6 +172,15 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
         "user_id": db_user.id,
         "email": db_user.email
     }
+
+
+
+@app.post("/upload")
+def upload_file(file: UploadFile = File(...)):
+
+    file_path= f"static/{file.filename}"
     
-    
-    
+    with open(file_path, "wb") as f:
+        f.write(file.file.read())
+        
+    return {"filename": file.filename, "detail": "File uploaded successfully"}  
