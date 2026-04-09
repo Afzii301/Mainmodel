@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
@@ -174,3 +176,18 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
     
     
     
+
+
+@app.delete("/Delete_image/{id}/{file_name}")
+def delete_image(id: int, file_name: str):
+    
+    file_path = f"static/uploads/{file_name}"
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    os.remove(file_path)  
+    return {"detail": "File deleted successfully"}  
+
+
+
