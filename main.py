@@ -1,7 +1,9 @@
+from email.mime import image
+import os
 from fastapi import FastAPI, Depends, HTTPException, Query,UploadFile,File
-from sqlalchemy.orm import Session,declarative_base
+from sqlalchemy.orm import Session,declarative_base,relationship
 from db import SessionLocal
-from model import User
+from model import User,Image
 from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
 from utils import hash_password, verify_password
 from fastapi.staticfiles import StaticFiles
@@ -175,12 +177,34 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
 
 
 
-@app.post("/upload")
-def upload_file(file: UploadFile = File(...)):
-
-    file_path= f"static/{file.filename}"
+@app.post("/upload/{user_id}")
+def upload_file(user_id:int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    
+    db_user =db.query(User).filter(User.id==user_id, User.is_deleted==False).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    upload_dir = "static"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    
+    file_path=os.path.join(upload_dir, file.filename)
     
     with open(file_path, "wb") as f:
-        f.write(file.file.read())
+     f.write(file.file.read())
+    
+    new_image=Image(
+        path=file_path,
+        file_name=file.filename,
+        user_id=user_id
+    )
         
-    return {"filename": file.filename, "detail": "File uploaded successfully"}  
+    db.add(new_image)
+    db.commit()
+    db.refresh(db_user)
+        
+    file_url=f"/static/{file.filename}"
+        
+    return {"file_url": file_url, "detail": "File uploaded successfully"}
+
+

@@ -28,12 +28,15 @@ class LoginSchema(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)  # Password must be at least 8 characters long
     
-    
-    
-
+   
 # Used for returning user data (Response)
 class UserResponse(UserBase):
     id: int
+    name: str
+    email: EmailStr
+    path: Optional[str] = None
+    file_name: Optional[str] = None
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
