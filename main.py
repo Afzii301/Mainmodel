@@ -1,4 +1,5 @@
 import os
+from tkinter import Image
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session,declarative_base
@@ -178,16 +179,22 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
     
 
 
-@app.delete("/Delete_image/{id}/{file_name}")
-def delete_image(id: int, file_name: str):
-    
-    file_path = f"static/uploads/{file_name}"
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    os.remove(file_path)  
-    return {"detail": "File deleted successfully"}  
 
+@app.delete("/delete-image-by-user/{user_id}")
+def delete_image_by_user(user_id: int, file_name: str, db: Session = Depends(get_db)):
 
+    db_image = db.query(Image).filter(
+        Image.user_id == user_id,
+        Image.file_name == file_name
+    ).first()
 
+    if not db_image:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    if os.path.exists(db_image.path):
+        os.remove(db_image.path)
+
+    db.delete(db_image)
+    db.commit()
+
+    return {"detail": "Image deleted successfully"}
