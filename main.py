@@ -1,5 +1,6 @@
 import os
-from tkinter import Image
+
+from model import Image
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session,declarative_base
@@ -7,7 +8,8 @@ from db import SessionLocal
 from model import User
 from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
 from utils import hash_password, verify_password
-
+secret_key = os.getenv("SECRET_KEY",)
+from config import SECRET_KEY
 from schemas import LoginSchema
 app = FastAPI(
     title="User Management API",
@@ -198,3 +200,23 @@ def delete_image_by_user(user_id: int, file_name: str, db: Session = Depends(get
     db.commit()
 
     return {"detail": "Image deleted successfully"}
+
+
+
+
+@app.delete("/reset_api")
+def reset_api(secret_key: str, db: Session = Depends(get_db)):
+
+    if secret_key != SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    try:
+        db.query(Image).delete()   # 👈 child table first
+        db.query(User).delete()    # 👈 parent table
+        db.commit()
+
+        return {"message": "All data reset successfully"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
