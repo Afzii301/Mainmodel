@@ -1,6 +1,7 @@
 import os
 
 from model import Image
+from fastapi import  Header
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session,declarative_base
@@ -8,7 +9,7 @@ from db import SessionLocal
 from model import User
 from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
 from utils import hash_password, verify_password
-secret_key = os.getenv("SECRET_KEY",)
+
 from config import SECRET_KEY
 from schemas import LoginSchema
 app = FastAPI(
@@ -205,7 +206,7 @@ def delete_image_by_user(user_id: int, file_name: str, db: Session = Depends(get
 
 
 @app.delete("/reset_api")
-def reset_api(secret_key: str, db: Session = Depends(get_db)):
+def reset_api(secret_key: str = Header(...), db: Session = Depends(get_db)):
 
     if secret_key != SECRET_KEY:
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -220,3 +221,7 @@ def reset_api(secret_key: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+    
+    
