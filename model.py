@@ -15,8 +15,7 @@ class User(Base):
     
     is_deleted = Column(Boolean, default=False)
     images = relationship("Image", back_populates="user", cascade="all, delete")
-# create table
-Base.metadata.create_all(bind=engine)
+
 
 class Image(Base):
     __tablename__ = "images"
@@ -28,3 +27,6 @@ class Image(Base):
 
     # 🔗 relationship
     user = relationship("User", back_populates="images")
+    
+    # create table
+Base.metadata.create_all(bind=engine)
