@@ -6,10 +6,10 @@ class UserBase(BaseModel):
     # min_length=1 ensures the name is NOT an empty string ""
     name: str = Field(..., min_length=1)
     email: EmailStr 
-    password: str = Field(..., min_length=8)  # Password must be at least 8 characters long
 
 # Used for creating a user (POST)
 class UserCreate(UserBase):
+    password: str = Field(..., min_length=8)  # Password must be at least 8 characters long
     pass    
 
 # Used for updating a user (PATCH)
