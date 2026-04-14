@@ -1,17 +1,11 @@
 import os
-
-from model import Image
-from fastapi import  Header
-
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query,Header
 from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
-from model import User
-from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
-from utils import hash_password, verify_password
-
 from config import SECRET_KEY
-from schemas import LoginSchema
+from utils import hash_password, verify_password
+from model import Image,User
+from schemas import LoginSchema,ResetPasswordRequest, UserResponse, UserCreate, UserUpdate
 app = FastAPI(
     title="User Management API",
     description="A simple User Management API with FastAPI and SQLAlchemy"
@@ -30,20 +24,8 @@ def get_db():
 # -------------------- GET ALL USERS --------------------
 @app.get("/users", response_model=list[UserResponse])
 def get_users(db: Session = Depends(get_db)):
-    users = db.query(User).filter(User.is_deleted == False).all()
-
-    # Filter out soft-deleted users
-
-    # Optional safety: invalid data skip karega
-    valid_users = []
-    for user in users:
-        try:
-            valid_users.append(UserResponse.model_validate(user))
-        except:
-            pass
-
-    return valid_users
-
+    return db.query(User).filter(User.is_deleted == False).all()
+    
 
 # -------------------- CREATE USER --------------------
 @app.post("/users", response_model=UserResponse, status_code=201)
@@ -134,13 +116,13 @@ def get_single_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/users/{user_id}/reset-password")
-def reset_password(user_id: int, new_password: str = Query(..., min_length=8), db: Session = Depends(get_db)):
+def reset_password(user_id: int, data: ResetPasswordRequest, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db_user.password = hash_password(new_password)
+    db_user.password = hash_password(data.new_password)
     try:
         db.commit()
         db.refresh(db_user)
@@ -178,11 +160,6 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
         "email": db_user.email
     }
     
-    
-    
-
-
-
 @app.delete("/delete-image-by-user/{user_id}")
 def delete_image_by_user(user_id: int, file_name: str, db: Session = Depends(get_db)):
 

@@ -20,7 +20,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=8)  # Password must be at least 8 characters long
     
     
-class ResetPassword(BaseModel):
+class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)  # New password must be at least 8 characters long
     
     
