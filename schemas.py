@@ -29,8 +29,12 @@ class LoginSchema(BaseModel):
     password: str = Field(..., min_length=8)  # Password must be at least 8 characters long
     
     
-    
-
+class ImageResponse(BaseModel):
+    id: int
+    image_url: str
+    user_id: int
+    class Config:
+        from_attributes = True
 # Used for returning user data (Response)
 class UserResponse(UserBase):
     id: int
