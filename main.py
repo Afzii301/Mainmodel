@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Query,UploadFile,File
+import os
+from fastapi import FastAPI, Depends, HTTPException, Query,Header
 from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
-from model import User
-from schemas import ResetPassword, UserResponse, UserCreate, UserUpdate
+from config import SECRET_KEY
 from utils import hash_password, verify_password
-from fastapi.staticfiles import StaticFiles
-from schemas import LoginSchema
+from model import Image,User
+from schemas import LoginSchema,ResetPasswordRequest, UserResponse, UserCreate, UserUpdate
 app = FastAPI(
     title="User Management API",
     description="A simple User Management API with FastAPI and SQLAlchemy"
@@ -25,20 +25,8 @@ def get_db():
 # -------------------- GET ALL USERS --------------------
 @app.get("/users", response_model=list[UserResponse])
 def get_users(db: Session = Depends(get_db)):
-    users = db.query(User).filter(User.is_deleted == False).all()
-
-    # Filter out soft-deleted users
-
-    # Optional safety: invalid data skip karega
-    valid_users = []
-    for user in users:
-        try:
-            valid_users.append(UserResponse.model_validate(user))
-        except:
-            pass
-
-    return valid_users
-
+    return db.query(User).filter(User.is_deleted == False).all()
+    
 
 # -------------------- CREATE USER --------------------
 @app.post("/users", response_model=UserResponse, status_code=201)
@@ -129,13 +117,13 @@ def get_single_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/users/{user_id}/reset-password")
-def reset_password(user_id: int, new_password: str = Query(..., min_length=8), db: Session = Depends(get_db)):
+def reset_password(user_id: int, data: ResetPasswordRequest, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db_user.password = hash_password(new_password)
+    db_user.password = hash_password(data.new_password)
     try:
         db.commit()
         db.refresh(db_user)
@@ -180,7 +168,45 @@ def upload_file(file: UploadFile = File(...)):
 
     file_path= f"static/{file.filename}"
     
-    with open(file_path, "wb") as f:
-        f.write(file.file.read())
-        
-    return {"filename": file.filename, "detail": "File uploaded successfully"}  
+@app.delete("/delete-image-by-user/{user_id}")
+def delete_image_by_user(user_id: int, file_name: str, db: Session = Depends(get_db)):
+
+    db_image = db.query(Image).filter(
+        Image.user_id == user_id,
+        Image.file_name == file_name
+    ).first()
+
+    if not db_image:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    if os.path.exists(db_image.path):
+        os.remove(db_image.path)
+
+    db.delete(db_image)
+    db.commit()
+
+    return {"detail": "Image deleted successfully"}
+
+
+
+
+@app.delete("/reset_api")
+def reset_api(secret_key: str = Header(...), db: Session = Depends(get_db)):
+
+    if secret_key != SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    try:
+        db.query(Image).delete()   # 👈 child table first
+        db.query(User).delete()    # 👈 parent table
+        db.commit()
+
+        return {"message": "All data reset successfully"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+    
+    
