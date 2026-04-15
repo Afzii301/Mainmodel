@@ -27,6 +27,9 @@ class ResetPasswordRequest(BaseModel):
 class LoginSchema(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)  # Password must be at least 8 characters long
+    
+    
+    
 
 # Used for returning user data (Response)
 class UserResponse(UserBase):
