@@ -1,11 +1,14 @@
+import uuid
 import os
-from fastapi import FastAPI, Depends, HTTPException, Query,Header
+import shutil
+from fastapi import FastAPI, Depends, File, HTTPException, Query,Header, UploadFile,File
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session,declarative_base
 from db import SessionLocal
 from config import SECRET_KEY
 from utils import hash_password, verify_password
 from model import Image,User
-from schemas import LoginSchema,ResetPasswordRequest, UserResponse, UserCreate, UserUpdate
+from schemas import LoginSchema,ResetPasswordRequest, UserResponse, UserCreate, UserUpdate, ImageResponse
 app = FastAPI(
     title="User Management API",
     description="A simple User Management API with FastAPI and SQLAlchemy"
@@ -161,32 +164,85 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
         "email": db_user.email
     }
 
+# ............ image upload ..........
+@app.post("/upload-image/{user_id}")
+def upload_image(
+    user_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    # 1. user check
+    db_user = db.query(User).filter(
+        User.id == user_id,
+        User.is_deleted == False
+    ).first()
 
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-@app.post("/upload")
-def upload_file(file: UploadFile = File(...)):
+    # 2. extension check
+    ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
+    ext = os.path.splitext(file.filename)[1].lower()
 
-    file_path= f"static/{file.filename}"
-    
-@app.delete("/delete-image-by-user/{user_id}")
-def delete_image_by_user(user_id: int, file_name: str, db: Session = Depends(get_db)):
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Invalid file type")
 
+    # 3. size check
+    MAX_SIZE = 2 * 1024 * 1024
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    # 4. unique name
+    unique_name = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join("static/uploads", unique_name)
+
+    # 5. save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # 6. save DB
+    image = Image(
+        image_url=f"/static/uploads/{unique_name}",
+        user_id=user_id
+    )
+
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+
+    return image
+
+# ...............delete image.............
+
+@app.delete("/users/{user_id}/images/{image_id}")
+def delete_user_image(
+    user_id: int,
+    image_id: int,
+    db: Session = Depends(get_db)
+):
+
+    # 1. image find (user verify bhi ho raha hai)
     db_image = db.query(Image).filter(
-        Image.user_id == user_id,
-        Image.file_name == file_name
+        Image.id == image_id,
+        Image.user_id == user_id
     ).first()
 
     if not db_image:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    if os.path.exists(db_image.path):
-        os.remove(db_image.path)
+    # 2. file delete
+    if db_image.image_url and os.path.exists(db_image.image_url):
+        os.remove(db_image.image_url)
 
+    # 3. DB delete
     db.delete(db_image)
     db.commit()
 
-    return {"detail": "Image deleted successfully"}
-
+    return {"message": "Image deleted successfully"}
 
 
 

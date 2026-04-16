@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, List
 
-# Base schema for shared fields
+
 class UserBase(BaseModel):
     # min_length=1 ensures the name is NOT an empty string ""
     name: str = Field(..., min_length=1)
@@ -29,15 +29,21 @@ class LoginSchema(BaseModel):
     password: str = Field(..., min_length=8)  # Password must be at least 8 characters long
     
     
-    
+class ImageResponse(BaseModel):
+    id: int
+    image_url: str
+    class Config:
+        orm_mode = True
 
-# Used for returning user data (Response)
 class UserResponse(UserBase):
     id: int
+    name:str
+    email:str
+    images: list[ImageResponse] 
 
-    class Config:
-        from_attributes = True
-                
+    model_config={
+        "from_attributes": True
+    }
  
         
         

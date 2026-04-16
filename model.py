@@ -27,6 +27,4 @@ class Image(Base):
 
     # 🔗 relationship
     user = relationship("User", back_populates="images")
-    
-    # create table
-Base.metadata.create_all(bind=engine)
+ 
