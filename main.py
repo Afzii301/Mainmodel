@@ -1,4 +1,6 @@
+import uuid
 import os
+import shutil
 from fastapi import FastAPI, Depends, File, HTTPException, Query,Header, UploadFile,File
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session,declarative_base
@@ -163,32 +165,56 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
     }
 
 # ............ image upload ..........
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
 @app.post("/upload-image/{user_id}")
 def upload_image(
     user_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
+    # 1. user check
+    db_user = db.query(User).filter(
+        User.id == user_id,
+        User.is_deleted == False
+    ).first()
 
-    file_path = f"uploads/{file.filename}"
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
+    # 2. extension check
+    ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"]
+    ext = os.path.splitext(file.filename)[1].lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    # 3. size check
+    MAX_SIZE = 2 * 1024 * 1024
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    # 4. unique name
+    unique_name = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join("static/uploads", unique_name)
+
+    # 5. save file
     with open(file_path, "wb") as buffer:
-        buffer.write(file.file.read())
+        shutil.copyfileobj(file.file, buffer)
 
-    new_image = Image(
-        image_url=file_path,
+    # 6. save DB
+    image = Image(
+        image_url=f"/static/uploads/{unique_name}",
         user_id=user_id
     )
 
-    db.add(new_image)
+    db.add(image)
     db.commit()
-    db.refresh(new_image)
+    db.refresh(image)
 
-    return new_image
+    return image
 
 # ...............delete image.............
 
